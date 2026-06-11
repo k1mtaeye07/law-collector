@@ -1,0 +1,15 @@
+batch_size: 1000000
+concurrency: 50
+
+dev:
+  api_list_url: "https://..."
+  api_con_path: "https://..."
+  csv_path: "/somewhere"
+  logs_path: "/somewhere"
+  db:
+    host: "localhost"
+    port: 5432
+    docker_container: "postgres"   # docker ps 로 확인한 컨테이너명으로 변경
+    dbname: "mydb"
+    user: "user"
+    password: "pass"
