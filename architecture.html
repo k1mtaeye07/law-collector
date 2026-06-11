@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>law-collector Architecture</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, 'Helvetica Neue', 'Noto Sans KR', sans-serif;
+  background: #f0f2f5;
+  color: #1d1d1f;
+  padding: 28px 32px 28px;
+  min-width: 1200px;
+}
+
+/* ── Section wrapper ── */
+.section {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e0e0e5;
+  padding: 18px 20px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.07);
+}
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: #8e8e93;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e5ea;
+}
+
+/* ── Title ── */
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d1d1f;
+  letter-spacing: -.4px;
+  margin-bottom: 4px;
+}
+.page-sub {
+  font-size: 12px;
+  color: #6e6e73;
+  margin-bottom: 18px;
+}
+
+/* ═══════════════════════════════════════
+   SECTION 1 – Pipeline Overview
+════════════════════════════════════════ */
+.pipeline {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* Source / Sink */
+.io-box {
+  width: 116px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 8px;
+}
+.io-box.src  { background: #e8edff; border: 1.5px solid #4f6ef7; }
+.io-box.sink { background: #e6f4ea; border: 1.5px solid #34a853; }
+.io-box .icon  { font-size: 24px; }
+.io-box .label { font-size: 11.5px; font-weight: 700; color: #1d1d1f; text-align: center; }
+.io-box .meta  { font-size: 9.5px; color: #6e6e73; text-align: center; line-height: 1.55; }
+
+/* Arrow */
+.arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  flex-shrink: 0;
+  position: relative;
+}
+.arrow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  right: 12px;
+  height: 1.5px;
+  background: #b0b0b8;
+}
+.arrow-tip {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 9px solid #b0b0b8;
+  z-index: 1;
+}
+.arrow .alabel {
+  position: absolute;
+  top: calc(50% - 16px);
+  font-size: 8.5px;
+  color: #6e6e73;
+  white-space: nowrap;
+  background: #fff;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+/* Stage cards */
+.stages { flex: 1; display: flex; gap: 7px; }
+.stage {
+  flex: 1;
+  border-radius: 11px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.stage.list    { background: #f3f0ff; border: 1.5px solid #7c3aed; }
+.stage.content { background: #eff6ff; border: 1.5px solid #2563eb; }
+.stage.load    { background: #f0fdf4; border: 1.5px solid #16a34a; }
+
+.stage-hdr { display: flex; align-items: center; gap: 8px; }
+.stage-icon { font-size: 15px; }
+.stage-title { font-size: 12.5px; font-weight: 700; color: #1d1d1f; }
+.stage-file  { font-size: 9.5px; color: #8e8e93; font-family: 'Menlo', 'Courier New', monospace; }
+.divider { height: 1px; background: rgba(0,0,0,.08); }
+
+.io-lbl { font-size: 8px; color: #8e8e93; text-transform: uppercase; letter-spacing: .6px; font-weight: 700; margin-top: 1px; }
+.io-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.badge {
+  font-size: 8.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Menlo', monospace;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.badge.in  { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.badge.out { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.badge.log { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+.badge.cfg { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
+
+.detail-list { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.detail-item { font-size: 9.5px; color: #3a3a3c; display: flex; align-items: flex-start; gap: 5px; line-height: 1.45; }
+.dot { width: 4px; height: 4px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+.stage.list    .dot { background: #7c3aed; }
+.stage.content .dot { background: #2563eb; }
+.stage.load    .dot { background: #16a34a; }
+
+/* ═══════════════════════════════════════
+   SECTION 2 – law_content 내부 구조
+════════════════════════════════════════ */
+.internal {
+  display: grid;
+  grid-template-columns: 96px 28px 1fr 28px 1fr 28px 200px;
+  align-items: center;
+  gap: 0;
+  min-height: 220px;
+}
+
+/* Input CSV */
+.int-input {
+  background: #eff6ff;
+  border: 1.5px solid #93c5fd;
+  border-radius: 9px;
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 9px;
+  color: #1e40af;
+  font-family: 'Menlo', monospace;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+/* Queue box */
+.queue-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fffbeb;
+  border: 1.5px solid #f59e0b;
+  border-radius: 9px;
+  padding: 10px 8px;
+  text-align: center;
+  align-self: stretch;
+}
+.queue-box .q-title { font-size: 9.5px; font-weight: 700; color: #92400e; }
+.queue-box .q-sub   { font-size: 8.5px; color: #b45309; margin-top: 3px; line-height: 1.5; }
+.queue-box .q-type  { font-size: 8px; font-family: 'Menlo', monospace; color: #d97706; margin-top: 4px; }
+
+/* Workers grid */
+.workers-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-self: stretch;
+  justify-content: center;
+}
+.workers-title {
+  font-size: 9px;
+  font-weight: 700;
+  color: #1e40af;
+  text-align: center;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+.workers-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.worker-card {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  padding: 5px 3px;
+  text-align: center;
+  font-size: 8px;
+  font-weight: 600;
+  color: #1e40af;
+  line-height: 1.5;
+}
+.worker-meta {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 8.5px;
+  color: #2563eb;
+  text-align: center;
+  line-height: 1.55;
+}
+.worker-label {
+  font-size: 8.5px;
+  text-align: center;
+  color: #6e6e73;
+  font-style: italic;
+}
+
+/* Parse box */
+.parse-box {
+  background: #f3f0ff;
+  border: 1.5px solid #7c3aed;
+  border-radius: 9px;
+  padding: 10px 10px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+.parse-title { font-size: 9.5px; font-weight: 700; color: #4c1d95; }
+.parse-item  { font-size: 8.5px; color: #5b21b6; display: flex; gap: 5px; align-items: flex-start; line-height: 1.5; }
+
+/* Output CSV ×3 */
+.out-csvs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: stretch;
+  justify-content: center;
+}
+.out-csv {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 8px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.out-csv .csv-name { font-size: 9px; font-weight: 700; color: #15803d; font-family: 'Menlo', monospace; }
+.out-csv .csv-sub  { font-size: 8px; color: #16a34a; line-height: 1.5; }
+
+/* vertical arrow */
+.v-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 100%;
+}
+.v-arrow::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 10%;
+  bottom: 14px;
+  width: 1.5px;
+  background: #b0b0b8;
+  transform: translateX(-50%);
+}
+.v-tip {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid #b0b0b8;
+}
+
+/* ═══════════════════════════════════════
+   SECTION 3 – Common Modules
+════════════════════════════════════════ */
+.mod-list { display: flex; gap: 8px; }
+.mod {
+  flex: 1;
+  background: #fafafa;
+  border: 1px solid #e5e5ea;
+  border-radius: 10px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mod-title { font-size: 10px; font-weight: 700; color: #1d1d1f; font-family: 'Menlo', monospace; }
+.mod-desc  { font-size: 9px; color: #6e6e73; line-height: 1.5; }
+.mod-tag   { font-size: 8.5px; color: #7c3aed; font-family: 'Menlo', monospace; margin-top: 2px; }
+
+/* ═══════════════════════════════════════
+   Horizontal arrow helper (reusable)
+════════════════════════════════════════ */
+.h-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.h-arrow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 10px;
+  height: 1.5px;
+  background: #b0b0b8;
+}
+.h-tip {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid #b0b0b8;
+}
+.h-arrow .hl {
+  position: absolute;
+  top: calc(50% - 14px);
+  font-size: 8px;
+  color: #8e8e93;
+  white-space: nowrap;
+  background: white;
+  padding: 0 2px;
+  font-weight: 600;
+}
+</style>
+</head>
+<body>
+
+<div class="page-title">law-collector  Architecture</div>
+<div class="page-sub">법령 OpenAPI 수집 → CSV 버퍼 → PostgreSQL 적재  파이프라인</div>
+
+<!-- ══════════════════════════════════════
+     SECTION 1 · Pipeline Overview
+════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">① Pipeline Overview</div>
+  <div class="pipeline">
+
+    <div class="io-box src">
+      <div class="icon">🌐</div>
+      <div class="label">법령 OpenAPI</div>
+      <div class="meta">목록 XML<br>본문 XML</div>
+    </div>
+
+    <div class="arrow" style="width:34px"><div class="arrow-tip"></div><span class="alabel">HTTP/XML</span></div>
+
+    <div class="stages">
+
+      <!-- STAGE 1 -->
+      <div class="stage list">
+        <div class="stage-hdr">
+          <span class="stage-icon">📋</span>
+          <div>
+            <div class="stage-title">law_list</div>
+            <div class="stage-file">crawl/law_list.py</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="io-lbl">Input</div>
+        <div class="io-row">
+          <span class="badge cfg">config.yml</span>
+          <span class="badge in">api_list_url</span>
+        </div>
+        <div class="detail-list">
+          <div class="detail-item"><span class="dot"></span>requests.get (동기, 페이지 순회)</div>
+          <div class="detail-item"><span class="dot"></span>totalCnt → 100건 단위 페이징</div>
+          <div class="detail-item"><span class="dot"></span>법령 메타 XML 파싱 + URL 정규화</div>
+          <div class="detail-item"><span class="dot"></span>ENTRVS_DVS_CD 코드 매핑 (dict)</div>
+        </div>
+        <div class="io-lbl">Output</div>
+        <div class="io-row">
+          <span class="badge out">law_list_NNNN_ymd.csv</span>
+          <span class="badge log">crawl_*.log</span>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="arrow-tip"></div><span class="alabel">CSV</span></div>
+
+      <!-- STAGE 2 -->
+      <div class="stage content">
+        <div class="stage-hdr">
+          <span class="stage-icon">🔍</span>
+          <div>
+            <div class="stage-title">law_content</div>
+            <div class="stage-file">crawl/law_content.py</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="io-lbl">Input</div>
+        <div class="io-row">
+          <span class="badge in">law_list_*.csv</span>
+          <span class="badge cfg">concurrency=50</span>
+        </div>
+        <div class="detail-list">
+          <div class="detail-item"><span class="dot"></span>asyncio.Queue + 50 Workers</div>
+          <div class="detail-item"><span class="dot"></span>httpx.AsyncClient (비동기 병렬)</div>
+          <div class="detail-item"><span class="dot"></span>tenacity retry ×3, exp backoff 2–10s</div>
+          <div class="detail-item"><span class="dot"></span>1 URL → 법령본문 / 조문 / 항 동시 파싱</div>
+          <div class="detail-item"><span class="dot"></span>CsvWriter ×3 (queue.Queue + Thread)</div>
+        </div>
+        <div class="io-lbl">Output</div>
+        <div class="io-row">
+          <span class="badge out">law_con</span>
+          <span class="badge out">law_jo_con</span>
+          <span class="badge out">law_hang_con</span>
+          <span class="badge log">link_*.log</span>
+          <span class="badge log">final_fail_*.log</span>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="arrow-tip"></div><span class="alabel">CSV</span></div>
+
+      <!-- STAGE 3 -->
+      <div class="stage load">
+        <div class="stage-hdr">
+          <span class="stage-icon">📦</span>
+          <div>
+            <div class="stage-title">load_csv</div>
+            <div class="stage-file">load_csv.py</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="io-lbl">Input</div>
+        <div class="io-row">
+          <span class="badge in">*_NNNN_ymd.csv × 4</span>
+          <span class="badge cfg">psycopg2</span>
+        </div>
+        <div class="detail-list">
+          <div class="detail-item"><span class="dot"></span>단일 트랜잭션 (autocommit=False)</div>
+          <div class="detail-item"><span class="dot"></span>기존 행 있으면 TRUNCATE 후 COPY</div>
+          <div class="detail-item"><span class="dot"></span>COPY … FORCE_NULL (빈값 → NULL)</div>
+          <div class="detail-item"><span class="dot"></span>실패 시 ROLLBACK (테이블 원상 보존)</div>
+        </div>
+        <div class="io-lbl">Output</div>
+        <div class="io-row">
+          <span class="badge out">4 tables</span>
+          <span class="badge log">load_*.log</span>
+        </div>
+      </div>
+
+    </div><!-- /stages -->
+
+    <div class="arrow" style="width:34px"><div class="arrow-tip"></div><span class="alabel">COPY</span></div>
+
+    <div class="io-box sink">
+      <div class="icon">🐘</div>
+      <div class="label">PostgreSQL</div>
+      <div class="meta">law_list<br>law_con<br>law_jo_con<br>law_hang_con</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SECTION 2 · law_content 내부 병렬구조
+════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">② law_content — 내부 병렬 처리 구조</div>
+
+  <div class="internal">
+
+    <!-- Input -->
+    <div class="int-input">
+      law_list<br>_NNNN_ymd.csv<br><br>
+      <span style="font-size:8px;color:#6e6e73;font-family:sans-serif">링크 목록<br>~166,000건</span>
+    </div>
+
+    <!-- Arrow -->
+    <div class="h-arrow" style="width:28px;height:100%">
+      <div class="h-tip"></div>
+      <span class="hl">read</span>
+    </div>
+
+    <!-- Queue + Workers -->
+    <div class="workers-wrap">
+      <div class="queue-box" style="margin-bottom:4px;padding:8px 10px;flex-shrink:0">
+        <div class="q-title">asyncio.Queue</div>
+        <div class="q-sub">Producer가 전체 URL<br>한 번에 enqueue</div>
+        <div class="q-type">asyncio.Queue (FIFO)</div>
+      </div>
+      <div class="workers-title">50 Async Workers  (asyncio.gather)</div>
+      <div class="workers-grid">
+        <div class="worker-card">W-01<br><span style="font-size:7px;font-weight:400">get_nowait</span></div>
+        <div class="worker-card">W-02<br><span style="font-size:7px;font-weight:400">get_nowait</span></div>
+        <div class="worker-card">W-03<br><span style="font-size:7px;font-weight:400">get_nowait</span></div>
+        <div class="worker-card">W-04<br><span style="font-size:7px;font-weight:400">get_nowait</span></div>
+        <div class="worker-card" style="background:#e0eaff;border-color:#6b7ef7;color:#3730a3">…×50<br><span style="font-size:7px;font-weight:400">병렬</span></div>
+      </div>
+      <div class="worker-meta">
+        httpx.AsyncClient  ·  await fetch_xml<br>
+        <span style="color:#7c3aed">tenacity  retry ×3  exp-backoff 2–10s</span><br>
+        <span style="color:#15803d">QueueEmpty → worker 자동 종료</span>
+      </div>
+      <div class="worker-label">동시 처리량 = concurrency 설정값 (기본 50)</div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="h-arrow" style="width:28px;height:100%">
+      <div class="h-tip"></div>
+      <span class="hl">XML bytes</span>
+    </div>
+
+    <!-- XML Parse -->
+    <div class="parse-box">
+      <div class="parse-title">xml_parser.py</div>
+      <div class="parse-item">
+        <span style="color:#7c3aed;font-size:9px;margin-top:1px">▸</span>
+        parse_xml_string<br>
+        <span style="font-size:8px;color:#6e6e73">(lxml / stdlib 자동 선택)</span>
+      </div>
+      <div style="height:6px"></div>
+      <div style="font-size:8.5px;color:#4c1d95;font-weight:600;margin-bottom:2px">1 URL → 3 테이블 동시 추출</div>
+      <div class="parse-item"><span style="color:#7c3aed">▸</span> 법령본문 (law_con)</div>
+      <div class="parse-item"><span style="color:#7c3aed">▸</span> 조문 단위 (law_jo_con)</div>
+      <div class="parse-item"><span style="color:#7c3aed">▸</span> 항 단위 (law_hang_con)</div>
+      <div style="height:6px"></div>
+      <div style="font-size:8px;color:#6e6e73;line-height:1.5">
+        make_jo_num · convert_circled_number<br>
+        FAIL → link_*.log + fail_list 누적
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="h-arrow" style="width:28px;height:100%">
+      <div class="h-tip"></div>
+      <span class="hl">row</span>
+    </div>
+
+    <!-- Output CSVs -->
+    <div class="out-csvs">
+      <div style="font-size:9px;font-weight:700;color:#15803d;text-align:center;letter-spacing:.4px;text-transform:uppercase;margin-bottom:2px">CsvWriter × 3</div>
+      <div style="font-size:8.5px;color:#6e6e73;text-align:center;margin-bottom:6px;line-height:1.5">queue.Queue + 전용 Thread<br>asyncio 루프와 완전 분리</div>
+
+      <div class="out-csv">
+        <div class="csv-name">law_con</div>
+        <div class="csv-sub">법령본문 전체 텍스트<br>조문·항·호·목 연결</div>
+      </div>
+      <div class="out-csv">
+        <div class="csv-name">law_jo_con</div>
+        <div class="csv-sub">조문 단위 분할<br>조문번호 · 개정여부</div>
+      </div>
+      <div class="out-csv">
+        <div class="csv-name">law_hang_con</div>
+        <div class="csv-sub">항 단위 분할<br>조문번호 + 항번호</div>
+      </div>
+
+      <div style="font-size:8px;color:#6e6e73;text-align:center;margin-top:2px;line-height:1.55">
+        파일명: {table}_{idx:04d}_{ymd}.csv<br>
+        batch_size 초과 시 자동 분할
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SECTION 3 · Common Modules
+════════════════════════════════════════ -->
+<div class="section" style="margin-bottom:0">
+  <div class="section-title">③ common/  — 공유 모듈</div>
+  <div class="mod-list">
+
+    <div class="mod">
+      <div class="mod-title">config.py</div>
+      <div class="mod-desc">config.yml 파싱<br>env 별 설정 반환<br>(dev / stg / law / prod)</div>
+      <div class="mod-tag">batch_size · concurrency<br>api_*_url · csv/logs_path</div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-title">logger.py</div>
+      <div class="mod-desc">JobLogger 클래스<br>crawl_*.log — logging.FileHandler<br>link_*.log — 라인 버퍼 직접 기록<br>final_fail_*.log — 수집 실패 URL 목록</div>
+      <div class="mod-tag">log_link_fail(url, err, done, total)</div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-title">csv_writer.py</div>
+      <div class="mod-desc">CsvWriter 클래스<br>queue.Queue + 전용 Thread<br>asyncio I/O와 파일 쓰기 완전 분리<br>batch_size 초과 시 파일 자동 분할</div>
+      <div class="mod-tag">{name}_{idx:04d}_{ymd}.csv</div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-title">http_client.py</div>
+      <div class="mod-desc">make_async_client() — httpx.AsyncClient 생성<br>fetch_xml() — await GET → raw bytes 반환<br>RETRYABLE — retry 대상 예외 튜플 (공개 상수)<br><span style="color:#d97706">※ retry 로직은 law_content에 위임</span></div>
+      <div class="mod-tag">RETRYABLE = (RequestError, HTTPStatusError,<br>ParseError, XMLSyntaxError)</div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-title">xml_parser.py</div>
+      <div class="mod-desc">parse_xml_string() — lxml 우선, stdlib 폴백<br>_find / _iter_text — 태그 추출 유틸<br>make_jo_num() — 조문번호 생성<br>convert_circled_number() — ①②③ 변환</div>
+      <div class="mod-tag">raw bytes → ElementTree root</div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-title">utils.py</div>
+      <div class="mod-desc">fmt_elapsed(seconds) — HH:MM:SS 포맷<br>main.py · load_csv.py · law_content.py<br>세 곳에서 공유 (중복 제거)</div>
+      <div class="mod-tag">fmt_elapsed(float) → str</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
