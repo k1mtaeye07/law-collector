@@ -2,6 +2,7 @@ import csv
 import glob
 import queue
 import threading
+import traceback
 from datetime import date
 from pathlib import Path
 
@@ -38,12 +39,13 @@ class CsvWriter:
 
     _SENTINEL = object()
 
-    def __init__(self, job_name: str, csv_dir: Path, headers: list, batch_size: int):
+    def __init__(self, job_name: str, csv_dir: Path, headers: list, batch_size: int, ymd: str = None, logger=None):
         self.job_name = job_name
         self.csv_dir = csv_dir
         self.headers = headers
         self.batch_size = batch_size
-        self.ymd = date.today().strftime('%Y%m%d')
+        self.ymd = ymd or date.today().strftime('%Y%m%d')
+        self._logger = logger
 
         self._q: queue.Queue = queue.Queue()
         self._file_idx = 1
@@ -91,23 +93,31 @@ class CsvWriter:
             self._current_file = None
 
     def _loop(self):
-        self._open_file()
-        while True:
-            row = self._q.get()
-            if row is self._SENTINEL:
-                break
-            # normalize newlines in each field
-            normalized = [
-                v.replace('\r\n', '\n').replace('\r', '\n') if isinstance(v, str) else (v or '')
-                for v in row
-            ]
-            self._writer.writerow(normalized)
-            self._rows_in_file += 1
-            self._total_rows += 1
+        try:
+            self._open_file()
+            while True:
+                row = self._q.get()
+                if row is self._SENTINEL:
+                    break
+                # normalize newlines in each field
+                normalized = [
+                    v.replace('\r\n', '\n').replace('\r', '\n') if isinstance(v, str) else (v or '')
+                    for v in row
+                ]
+                self._writer.writerow(normalized)
+                self._rows_in_file += 1
+                self._total_rows += 1
 
-            if self._rows_in_file >= self.batch_size:
-                self._close_file()
-                self._file_idx += 1
-                self._open_file()
-
-        self._close_file()
+                if self._rows_in_file >= self.batch_size:
+                    self._close_file()
+                    self._file_idx += 1
+                    self._open_file()
+        except Exception as exc:
+            msg = f'[CsvWriter/{self.job_name}] 스레드 오류: {exc}\n{traceback.format_exc()}'
+            if self._logger is not None:
+                self._logger.error(msg)
+            else:
+                import logging
+                logging.getLogger('csv_writer').error(msg)
+        finally:
+            self._close_file()

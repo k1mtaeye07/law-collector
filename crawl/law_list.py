@@ -3,6 +3,8 @@ import requests
 from pathlib import Path
 from urllib.parse import urlparse
 
+from tqdm import tqdm
+
 from common.csv_writer import CsvWriter
 from common.logger import JobLogger
 from common.xml_parser import parse_xml_string, get_list_tag_value
@@ -49,7 +51,7 @@ def run(cfg: dict, ymd: str, logger: JobLogger):
     csv_dir = Path(cfg['csv_path']) / ymd
     csv_dir.mkdir(parents=True, exist_ok=True)
 
-    writer = CsvWriter('law_list', csv_dir, HEADERS, cfg['batch_size'])
+    writer = CsvWriter('law_list', csv_dir, HEADERS, cfg['batch_size'], logger=logger)
 
     # api_con_path에서 base URL 한 번만 계산 (루프 안에서 반복 계산 방지)
     parsed = urlparse(api_con_path)
@@ -62,7 +64,12 @@ def run(cfg: dict, ymd: str, logger: JobLogger):
     logger.info(f'[law_list] 목록 조회 시작: {base_url}')
 
     # 1. 총 건수 조회
-    doc = _call_api(f'{base_url}&page=1&display=100', verify_ssl)
+    try:
+        doc = _call_api(f'{base_url}&page=1&display=100', verify_ssl)
+    except Exception as exc:
+        logger.error(f'[law_list] totalCnt 조회 실패: {exc}')
+        writer.close()
+        return
     total_cnt_el = doc.find('.//totalCnt')
     if total_cnt_el is None:
         logger.info('[law_list] totalCnt 없음 → 수집 종료')
@@ -74,37 +81,43 @@ def run(cfg: dict, ymd: str, logger: JobLogger):
     logger.info(f'[law_list] totalCnt={total_cnt}, pages={total_pages}')
 
     # 2. 페이지 순회
-    for page in range(1, total_pages + 1):
-        page_url = f'{base_url}&page={page}&display=100'
-        try:
-            page_doc = _call_api(page_url, verify_ssl)
-        except Exception as e:
-            logger.warning(f'[law_list] page={page} 오류: {e}')
-            continue
+    logged_pct: set = set()
+    with tqdm(total=total_pages, desc='[law_list]', unit='page') as pbar:
+        for page in range(1, total_pages + 1):
+            page_url = f'{base_url}&page={page}&display=100'
+            try:
+                page_doc = _call_api(page_url, verify_ssl)
+            except Exception as e:
+                logger.warning(f'[law_list] page={page} 오류: {e}')
+                pbar.update(1)
+                continue
 
-        for law_el in page_doc.findall('.//law'):
-            detail_url = get_list_tag_value(law_el, '법령상세링크') or ''
-            detail_url = _adjust_url(detail_url, con_base_url)
+            for law_el in page_doc.findall('.//law'):
+                detail_url = get_list_tag_value(law_el, '법령상세링크') or ''
+                detail_url = _adjust_url(detail_url, con_base_url)
 
-            law_srno    = get_list_tag_value(law_el, '법령일련번호') or ''
-            law_id      = get_list_tag_value(law_el, '법령ID') or ''
-            enfc_ymd    = get_list_tag_value(law_el, '시행일자') or ''
-            law_han_nm  = get_list_tag_value(law_el, '법령명한글') or ''
-            prmlgt_no   = get_list_tag_value(law_el, '공포번호') or ''
-            prmlgt_ymd  = get_list_tag_value(law_el, '공포일자') or ''
-            entrvs_nm   = get_list_tag_value(law_el, '제개정구분명') or ''
-            crnt_law_nm = get_list_tag_value(law_el, '현행연혁코드') or ''
+                law_srno    = get_list_tag_value(law_el, '법령일련번호') or ''
+                law_id      = get_list_tag_value(law_el, '법령ID') or ''
+                enfc_ymd    = get_list_tag_value(law_el, '시행일자') or ''
+                law_han_nm  = get_list_tag_value(law_el, '법령명한글') or ''
+                prmlgt_no   = get_list_tag_value(law_el, '공포번호') or ''
+                prmlgt_ymd  = get_list_tag_value(law_el, '공포일자') or ''
+                entrvs_nm   = get_list_tag_value(law_el, '제개정구분명') or ''
+                crnt_law_nm = get_list_tag_value(law_el, '현행연혁코드') or ''
 
-            entrvs_cd = ENTRVS_DVS_CD_MAP.get(entrvs_nm, '')
-            dockey = f'{law_srno}_{enfc_ymd}'
+                entrvs_cd = ENTRVS_DVS_CD_MAP.get(entrvs_nm, '')
+                dockey = f'{law_srno}_{enfc_ymd}'
 
-            writer.put([
-                dockey, law_srno, law_id, entrvs_cd, entrvs_nm,
-                prmlgt_ymd, prmlgt_no, law_han_nm, enfc_ymd, crnt_law_nm, detail_url,
-            ])
+                writer.put([
+                    dockey, law_srno, law_id, entrvs_cd, entrvs_nm,
+                    prmlgt_ymd, prmlgt_no, law_han_nm, enfc_ymd, crnt_law_nm, detail_url,
+                ])
 
-        if page % 50 == 0:
-            logger.info(f'[law_list] {page}/{total_pages} 페이지 완료')
+            pbar.update(1)
+            milestone = (page * 100 // total_pages) // 10 * 10
+            if milestone and milestone not in logged_pct:
+                logged_pct.add(milestone)
+                logger.info(f'[law_list] 진행: {page}/{total_pages}page ({milestone}%) | 수집: {writer.total_rows:,}건')
 
     writer.close()
     logger.info(f'[law_list] 완료 | 수집: {writer.total_rows}건 | CSV: {writer.file_count}개')

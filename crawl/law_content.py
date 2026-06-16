@@ -255,14 +255,18 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, test_urls: list = None):
         metas = [{'link': u, 'law_srno': '', 'crnt_law_nm': ''} for u in test_urls]
         logger.info(f'[law_content] 테스트 URL {len(metas)}건 지정')
     else:
-        metas = load_metas(csv_dir)
+        try:
+            metas = load_metas(csv_dir)
+        except Exception as exc:
+            logger.error(f'[law_content] law_list CSV 로드 실패: {exc}')
+            return
         logger.info(f'[law_content] 대상 URL: {len(metas)}건')
     total = len(metas)
 
     writers = {
-        'law_con':      CsvWriter('law_con',      csv_dir, LAW_CON_HEADERS,      cfg['batch_size']),
-        'law_jo_con':   CsvWriter('law_jo_con',   csv_dir, LAW_JO_CON_HEADERS,   cfg['batch_size']),
-        'law_hang_con': CsvWriter('law_hang_con', csv_dir, LAW_HANG_CON_HEADERS, cfg['batch_size']),
+        'law_con':      CsvWriter('law_con',      csv_dir, LAW_CON_HEADERS,      cfg['batch_size'], ymd, logger),
+        'law_jo_con':   CsvWriter('law_jo_con',   csv_dir, LAW_JO_CON_HEADERS,   cfg['batch_size'], ymd, logger),
+        'law_hang_con': CsvWriter('law_hang_con', csv_dir, LAW_HANG_CON_HEADERS, cfg['batch_size'], ymd, logger),
     }
 
     fail_list = []
@@ -284,6 +288,7 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, test_urls: list = None):
         for m in metas:
             q.put_nowait(m)
 
+        logged_pct: set = set()
         with tqdm(total=total, desc='[law_content]', unit='건') as pbar:
 
             async def worker():
@@ -314,6 +319,10 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, test_urls: list = None):
                         done_count += 1
                         pbar.update(1)
                         pbar.set_postfix({'실패': len(fail_list)})
+                        milestone = (done_count * 100 // total) // 10 * 10
+                        if milestone and milestone not in logged_pct:
+                            logged_pct.add(milestone)
+                            logger.info(f'[law_content] 진행: {done_count:,}/{total:,}건 ({milestone}%) | 실패: {len(fail_list)}건')
 
             await asyncio.gather(*[worker() for _ in range(cfg['concurrency'])])
 
