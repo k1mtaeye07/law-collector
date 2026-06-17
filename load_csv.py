@@ -28,9 +28,11 @@ from common.utils import fmt_elapsed
 
 COPY_HEADERS = {
     'law_list':     'DOCKEY,LAW_SRNO,LAW_ID,ENTRVS_DVS_CD,ENTRVS_DVS_NM,PRMLGT_YMD,PRMLGT_NO,LAW_HAN_NM,ENFC_YMD,CRNT_LAW_NM,LINK',
-    'law_con':      'DOCKEY,TITLE,JOMUN_DVS_NM,CTXT,LAW_SRNO,CRNT_LAW_NM,LAW_ID,PRMLGT_YMD,PRMLGT_NO,LAW_DVS_CD_NM,LAW_HAN_NM,LAW_CHNCHR_NM,LAW_ABRVTD_NM,ENFC_YMD',
+    'law_con':      'DOCKEY,JOMUN_DVS_NM,CTXT,LAW_SRNO,CRNT_LAW_NM,LAW_ID,PRMLGT_YMD,PRMLGT_NO,LAW_DVS_CD_NM,LAW_HAN_NM,LAW_CHNCHR_NM,LAW_ABRVTD_NM,ENFC_YMD',
     'law_jo_con':   'DOCKEY,JOMUN_NO,JO_NO,TITLE,CTXT,LAW_SRNO,CRNT_LAW_NM,LAW_ID,PRMLGT_YMD,PRMLGT_NO,LAW_DVS_CD_NM,LAW_HAN_NM,LAW_CHNCHR_NM,LAW_ABRVTD_NM,JOMUN_CHG_YN,ENFC_YMD',
     'law_hang_con': 'DOCKEY,JOMUN_NO,JO_NO,TITLE,HANG_NO,CTXT,LAW_SRNO,CRNT_LAW_NM,LAW_ID,PRMLGT_YMD,PRMLGT_NO,LAW_DVS_CD_NM,LAW_HAN_NM,LAW_CHNCHR_NM,LAW_ABRVTD_NM,JOMUN_CHG_YN,ENFC_YMD',
+    'auth_int':     'SRNO,TITL,DOC_NO,DCSN_YMD,INSTN,CTXT,DOC_KND,DATA_YMD',
+    'de_case':      'INSTN_DCSNST_SRNO,DCSNST_SRNO,INSTN,CS_NO,CS_NM,DOC_KND,DCSN_YMD,CTXT,DATA_YMD',
 }
 
 # integer/date 데이터 타입 에러 방지 (CSV의 "" → NULL로 자동 변환)
@@ -39,6 +41,14 @@ FORCE_NULL_COLS = {
     'law_con':      'law_srno,law_id,prmlgt_ymd,prmlgt_no',
     'law_jo_con':   'law_srno,law_id,prmlgt_ymd,prmlgt_no',
     'law_hang_con': 'law_srno,law_id,prmlgt_ymd,prmlgt_no',
+    'auth_int':     'dcsn_ymd,data_ymd',
+    'de_case':      'dcsn_ymd,data_ymd',
+}
+
+# auth_int/de_case는 타겟별 job_name(auth_int_{target}, de_case_{target})으로 파일 생성
+GLOB_PATTERNS = {
+    'auth_int': 'auth_int_*_????_*.csv',
+    'de_case':  'de_case_*_????_*.csv',
 }
 
 
@@ -93,7 +103,8 @@ def run(table: str, cfg: dict, ymd: str, csv_dir_override: str = None, logger=No
         logger = setup_logger(log_dir)
 
     csv_dir = Path(csv_dir_override or cfg['csv_path']) / ymd
-    pattern = str(csv_dir / f'{table}_????_*.csv')
+    glob_pat = GLOB_PATTERNS.get(table, f'{table}_????_*.csv')
+    pattern = str(csv_dir / glob_pat)
     files = sorted(glob.glob(pattern))
     if not files:
         raise FileNotFoundError(f'CSV 파일 없음: {pattern}')
@@ -147,7 +158,7 @@ def run(table: str, cfg: dict, ymd: str, csv_dir_override: str = None, logger=No
 
 def main():
     parser = argparse.ArgumentParser(description='CSV → PostgreSQL 적재')
-    parser.add_argument('table', choices=list(COPY_HEADERS.keys()))
+    parser.add_argument('table', choices=sorted(COPY_HEADERS.keys()))
     parser.add_argument('env', choices=['dev', 'stg', 'law', 'prod'])
     parser.add_argument('ymd', help='날짜 서브디렉토리 (예: 20260608)')
     parser.add_argument('--dir', help='CSV 루트 디렉토리 (기본: config의 csv_path)')

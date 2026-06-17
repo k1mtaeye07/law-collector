@@ -71,7 +71,48 @@ def cmd_load(args):
     logger = setup_logger(Path(cfg['logs_path']) / ymd)
 
     for table in COPY_HEADERS.keys():
-        run(table, cfg, ymd, logger=logger)
+        try:
+            run(table, cfg, ymd, logger=logger)
+        except FileNotFoundError as e:
+            logger.warning(f'[load] {table} CSV 없음, 건너뜀: {e}')
+
+
+def cmd_all(args):
+    from pathlib import Path
+    from load_csv import run as load_run, setup_logger
+    import crawl.law_list as m_law_list
+    import crawl.law_content as m_law_content
+    import crawl.auth_int as m_auth_int
+    import crawl.de_case as m_de_case
+
+    cfg = load_config(args.env)
+    if args.concurrency:
+        cfg['concurrency'] = args.concurrency
+
+    ymd = date.today().strftime('%Y%m%d')
+    logger = JobLogger(cfg['logs_path'], ymd)
+    load_logger = setup_logger(Path(cfg['logs_path']) / ymd)
+
+    def _load(*tables):
+        for table in tables:
+            try:
+                load_run(table, cfg, ymd, logger=load_logger)
+            except FileNotFoundError as e:
+                load_logger.warning(f'[load] {table} CSV 없음, 건너뜀: {e}')
+            except Exception as e:
+                load_logger.error(f'[load] {table} 적재 실패: {e}')
+
+    m_law_list.run(cfg, ymd, logger)
+    _load('law_list')
+
+    asyncio.run(m_law_content.run(cfg, ymd, logger))
+    _load('law_con', 'law_jo_con', 'law_hang_con')
+
+    asyncio.run(m_auth_int.run(cfg, ymd, logger))
+    _load('auth_int')
+
+    asyncio.run(m_de_case.run(cfg, ymd, logger))
+    _load('de_case')
 
 
 def cmd_law_content(args):
@@ -117,8 +158,8 @@ def main():
     p_decase.add_argument('--target', metavar='TARGET', dest='target',
                           help='테스트 시 사용할 target 코드 (예: ppc, ftc, decc 등)')
 
-    sub.add_parser('load', parents=[common], help='CSV → DB 전체 적재 (4개 테이블)')
-    sub.add_parser('all',  parents=[common], help='law_list + law_content + load 순차 실행')
+    sub.add_parser('load', parents=[common], help='CSV → DB 전체 적재 (6개 테이블)')
+    sub.add_parser('all',  parents=[common], help='각 크롤러 완료 즉시 load (law_list→law_content→auth_int→de_case)')
 
     args = parser.parse_args()
 
@@ -133,9 +174,7 @@ def main():
     elif args.command == 'load':
         cmd_load(args)
     elif args.command == 'all':
-        cmd_law_list(args)
-        cmd_law_content(args)
-        cmd_load(args)
+        cmd_all(args)
     else:
         parser.print_help()
         sys.exit(1)

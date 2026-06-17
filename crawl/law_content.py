@@ -17,7 +17,7 @@ from common.xml_parser import (
 
 # ── CSV 헤더 ────────────────────────────────────────────────────────────────
 LAW_CON_HEADERS = [
-    'DOCKEY', 'TITLE', 'JOMUN_DVS_NM', 'CTXT', 'LAW_SRNO', 'CRNT_LAW_NM', 'LAW_ID',
+    'DOCKEY', 'JOMUN_DVS_NM', 'CTXT', 'LAW_SRNO', 'CRNT_LAW_NM', 'LAW_ID',
     'PRMLGT_YMD', 'PRMLGT_NO', 'LAW_DVS_CD_NM', 'LAW_HAN_NM',
     'LAW_CHNCHR_NM', 'LAW_ABRVTD_NM', 'ENFC_YMD',
 ]
@@ -120,7 +120,7 @@ def parse_law_con(root, meta: dict):
 
     dockey = f"{b['law_srno']}_{b['enfc_ymd']}"
     return [
-        dockey, b['law_han_nm'], jomun_dvs_nm, ctxt, b['law_srno'], b['crnt_law_nm'],
+        dockey, jomun_dvs_nm, ctxt, b['law_srno'], b['crnt_law_nm'],
         b['law_id'], b['prmlgt_ymd'], b['prmlgt_no'], b['law_dvs_cd_nm'],
         b['law_han_nm'], b['law_chnchr_nm'], b['law_abrvtd_nm'], b['enfc_ymd'],
     ]

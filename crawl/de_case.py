@@ -14,7 +14,7 @@ from common.logger import JobLogger
 from common.utils import date_convert, fmt_elapsed
 from common.xml_parser import get_tag_value, parse_xml_string
 
-HEADERS = ['INSTN_DCSNST_SRNO', 'DCSNST_SRNO', 'INSTN', 'CS_NO', 'CS_NM', 'DOC_KND', 'CTXT', 'DATA_YMD']
+HEADERS = ['INSTN_DCSNST_SRNO', 'DCSNST_SRNO', 'INSTN', 'CS_NO', 'CS_NM', 'DOC_KND', 'DCSN_YMD', 'CTXT', 'DATA_YMD']
 
 # comDto.java dcaseTg / dcasNm 순서 그대로 대응
 # DeCase.java switch-case에 없는 eiac, kcc는 default 태그 사용
@@ -148,7 +148,7 @@ def _parse_detail(root, target: str, tags: dict) -> list:
     if not data_ymd:
         data_ymd = dcsn_ymd
 
-    return [instn_dcsnst_srno, dcsnst_srno, instn, cs_no, cs_nm, target, ctxt, data_ymd]
+    return [instn_dcsnst_srno, dcsnst_srno, instn, cs_no, cs_nm, target, dcsn_ymd, ctxt, data_ymd]
 
 
 async def run(cfg: dict, ymd: str, logger: JobLogger, mode: str = 'all', test_urls: list = None, target: str = None):

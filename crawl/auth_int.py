@@ -33,7 +33,7 @@ AUTHINT_NAMES = {
     'molegCgmExpc': '법제처',
 }
 
-HEADERS = ['SRNO', 'TITL', 'DOC_NO', 'DCSN_YMD', 'INSTN', 'CTXT', 'DOC_KMD', 'DATA_YMD']
+HEADERS = ['SRNO', 'TITL', 'DOC_NO', 'DCSN_YMD', 'INSTN', 'CTXT', 'DOC_KND', 'DATA_YMD']
 
 
 def _make_list_url(api_list_url: str, target: str, ymd: str) -> str:
