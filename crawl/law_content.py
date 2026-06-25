@@ -147,6 +147,8 @@ def parse_law_jo_con(root, meta: dict) -> list:
         jomun_ser_no = get_tag(jomun, '조문가지번호')
         jomun_yn     = get_tag(jomun, '조문여부')
         jomun_chg_yn = get_tag(jomun, '조문변경여부')
+        jomun_title  = get_tag(jomun, '조문제목')
+        jomun_title  = f'({jomun_title})' if jomun_title else ''
 
         jo_no = make_jo_num(jomun_no, jomun_ser_no)
         jo_con_no = (f'제{jomun_no}조의{jomun_ser_no}' if jomun_ser_no else f'제{jomun_no}조') if jomun_no and jomun_no != '0' else ''
@@ -156,7 +158,7 @@ def parse_law_jo_con(root, meta: dict) -> list:
             dockey = f"{b['law_srno']}_{b['enfc_ymd']}_{jo_no}"
             result.setdefault(dockey, {
                 'JOMUN_NO': jomun_no, 'JO_NO': jo_no,
-                'TITLE': ' '.join(filter(None, [b['law_han_nm'], jo_con_no])),
+                'TITLE': ' '.join(filter(None, [b['law_han_nm'], jo_con_no, jomun_title])),
                 'CTXT': ctxt, 'JOMUN_CHG_YN': jomun_chg_yn,
             })
         elif len(jomun_list) == 1:
@@ -196,6 +198,8 @@ def parse_law_hang_con(root, meta: dict) -> list:
         jomun_con    = get_tag(jomun, '조문내용')
         jomun_yn     = get_tag(jomun, '조문여부')
         jomun_chg_yn = get_tag(jomun, '조문변경여부')
+        jomun_title  = get_tag(jomun, '조문제목')
+        jomun_title  = f'({jomun_title})' if jomun_title else ''
 
         jo_no = make_jo_num(jomun_no, jomun_ser_no)
         jo_con_no = (f'제{jomun_no}조의{jomun_ser_no}' if jomun_ser_no else f'제{jomun_no}조') if jomun_no and jomun_no != '0' else ''
@@ -224,7 +228,7 @@ def parse_law_hang_con(root, meta: dict) -> list:
                 dockey = f"{b['law_srno']}_{b['enfc_ymd']}_{jo_no_val}_{hang_no}"
                 result.setdefault(dockey, {
                     'JOMUN_NO': jomun_no, 'JO_NO': jo_no_val,
-                    'TITLE': ' '.join(filter(None, [b['law_han_nm'], jo_con_no_val, hang_no_nm])),
+                    'TITLE': ' '.join(filter(None, [b['law_han_nm'], jo_con_no_val, hang_no_nm, jomun_title])),
                     'HANG_NO': hang_no, 'CTXT': ctxt,
                     'JOMUN_CHG_YN': jomun_chg_yn,
                 })

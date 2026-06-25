@@ -33,7 +33,7 @@ AUTHINT_NAMES = {
     'molegCgmExpc': '법제처',
 }
 
-HEADERS = ['SRNO', 'TITL', 'DOC_NO', 'DCSN_YMD', 'INSTN', 'CTXT', 'DOC_KND', 'DATA_YMD']
+HEADERS = ['SRNO', 'TITL', 'DOC_NO', 'DCSN_YMD', 'INSTN', 'CTXT', 'DOC_KND', 'DATA_YMD', 'RLTD_LAW']
 
 
 def _make_list_url(api_list_url: str, target: str, ymd: str) -> str:
@@ -70,6 +70,10 @@ def _parse_detail(root, target: str):
         r'\s+', ' ',
         f"{qpt} {get_tag_value(root, '화답')} {get_tag_value(root, '이유')}"
     ).strip()
+    ctxt = ctxt.replace('<질의요지>', '')
+
+    rltd_law = get_tag_value(root, '관련법령')
+    rltd_law = rltd_law.replace('「', '').replace('」', '').replace('\n', '').replace('/', '')
 
     return [
         srno,
@@ -80,6 +84,7 @@ def _parse_detail(root, target: str):
         ctxt,
         target,
         get_tag_value(root, '데이터기준일시'),
+        rltd_law,
     ]
 
 

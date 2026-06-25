@@ -31,7 +31,7 @@ COPY_HEADERS = {
     'law_con':      'DOCKEY,JOMUN_DVS_NM,CTXT,LAW_SRNO,CRNT_LAW_NM,LAW_ID,PRMLGT_YMD,PRMLGT_NO,LAW_DVS_CD_NM,LAW_HAN_NM,LAW_CHNCHR_NM,LAW_ABRVTD_NM,ENFC_YMD',
     'law_jo_con':   'DOCKEY,JOMUN_NO,JO_NO,TITLE,CTXT,LAW_SRNO,CRNT_LAW_NM,LAW_ID,PRMLGT_YMD,PRMLGT_NO,LAW_DVS_CD_NM,LAW_HAN_NM,LAW_CHNCHR_NM,LAW_ABRVTD_NM,JOMUN_CHG_YN,ENFC_YMD',
     'law_hang_con': 'DOCKEY,JOMUN_NO,JO_NO,TITLE,HANG_NO,CTXT,LAW_SRNO,CRNT_LAW_NM,LAW_ID,PRMLGT_YMD,PRMLGT_NO,LAW_DVS_CD_NM,LAW_HAN_NM,LAW_CHNCHR_NM,LAW_ABRVTD_NM,JOMUN_CHG_YN,ENFC_YMD',
-    'auth_int':     'SRNO,TITL,DOC_NO,DCSN_YMD,INSTN,CTXT,DOC_KND,DATA_YMD',
+    'auth_int':     'SRNO,TITL,DOC_NO,DCSN_YMD,INSTN,CTXT,DOC_KND,DATA_YMD,RLTD_LAW',
     'de_case':      'INSTN_DCSNST_SRNO,DCSNST_SRNO,INSTN,CS_NO,CS_NM,DOC_KND,DCSN_YMD,CTXT,DATA_YMD',
 }
 
@@ -126,6 +126,7 @@ def run(table: str, cfg: dict, ymd: str, csv_dir_override: str = None, logger=No
     try:
         conn.autocommit = False
         cur = conn.cursor()
+        cur.execute("SET LOCAL statement_timeout = '10min'")
 
         cur.execute(f'SELECT COUNT(*) FROM {table}')
         existing = cur.fetchone()[0]
