@@ -292,6 +292,7 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, test_urls: list = None):
         for m in metas:
             q.put_nowait(m)
 
+        seen = {'law_con': set(), 'law_jo_con': set(), 'law_hang_con': set()}
         logged_pct: set = set()
         with tqdm(total=total, desc='[law_content]', unit='건') as pbar:
 
@@ -309,12 +310,17 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, test_urls: list = None):
                         jo_rows   = parse_law_jo_con(root, meta)
                         hang_rows = parse_law_hang_con(root, meta)
 
-                        if con_row:
+                        if con_row and con_row[0] not in seen['law_con']:
+                            seen['law_con'].add(con_row[0])
                             writers['law_con'].put(con_row)
                         for r in jo_rows:
-                            writers['law_jo_con'].put(r)
+                            if r[0] not in seen['law_jo_con']:
+                                seen['law_jo_con'].add(r[0])
+                                writers['law_jo_con'].put(r)
                         for r in hang_rows:
-                            writers['law_hang_con'].put(r)
+                            if r[0] not in seen['law_hang_con']:
+                                seen['law_hang_con'].add(r[0])
+                                writers['law_hang_con'].put(r)
 
                     except Exception as exc:
                         fail_list.append(meta)

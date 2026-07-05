@@ -81,6 +81,7 @@ def run(cfg: dict, ymd: str, logger: JobLogger):
     logger.info(f'[law_list] totalCnt={total_cnt}, pages={total_pages}')
 
     # 2. 페이지 순회
+    seen: set = set()
     logged_pct: set = set()
     with tqdm(total=total_pages, desc='[law_list]', unit='page') as pbar:
         for page in range(1, total_pages + 1):
@@ -108,10 +109,12 @@ def run(cfg: dict, ymd: str, logger: JobLogger):
                 entrvs_cd = ENTRVS_DVS_CD_MAP.get(entrvs_nm, '')
                 dockey = f'{law_srno}_{enfc_ymd}'
 
-                writer.put([
-                    dockey, law_srno, law_id, entrvs_cd, entrvs_nm,
-                    prmlgt_ymd, prmlgt_no, law_han_nm, enfc_ymd, crnt_law_nm, detail_url,
-                ])
+                if dockey not in seen:
+                    seen.add(dockey)
+                    writer.put([
+                        dockey, law_srno, law_id, entrvs_cd, entrvs_nm,
+                        prmlgt_ymd, prmlgt_no, law_han_nm, enfc_ymd, crnt_law_nm, detail_url,
+                    ])
 
             pbar.update(1)
             milestone = (page * 100 // total_pages) // 10 * 10

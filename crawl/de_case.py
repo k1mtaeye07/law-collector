@@ -202,6 +202,7 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, mode: str = 'all', test_ur
                 for m in metas:
                     q.put_nowait(m)
 
+                seen: set = set()
                 logged_pct: set = set()
                 with tqdm(total=total, desc=f'[de_case/{target}]', unit='건') as pbar:
 
@@ -215,7 +216,9 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, mode: str = 'all', test_ur
                             try:
                                 detail_root = await _fetch_and_parse(meta['link'])
                                 row = _parse_detail(detail_root, meta['target'], tags)
-                                writer.put(row)
+                                if row[0] not in seen:
+                                    seen.add(row[0])
+                                    writer.put(row)
                             except Exception as exc:
                                 fail_list.append(meta)
                                 logger.log_link_fail(meta['link'], str(exc), done_count, total)
