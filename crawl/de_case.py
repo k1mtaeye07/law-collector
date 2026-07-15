@@ -1,7 +1,6 @@
 import asyncio
 import re
 import time
-from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -70,19 +69,7 @@ def _adjust_link(link: str, con_base: str) -> str:
     return link.replace('/DRF/lawService.do', con_base)
 
 
-def _is_target_date(date_str: str) -> bool:
-    try:
-        d = date_convert(date_str)
-        if len(d) < 8:
-            return False
-        tg = date(int(d[:4]), int(d[4:6]), int(d[6:8]))
-        today = date.today()
-        return today - timedelta(days=1) <= tg <= today
-    except (ValueError, TypeError):
-        return False
-
-
-async def _fetch_list(client, list_url: str, target: str, con_base: str, tags: dict, mode: str) -> list:
+async def _fetch_list(client, list_url: str, target: str, con_base: str, tags: dict) -> list:
     xml = await fetch_xml(client, list_url)
     root = parse_xml_string(xml)
 
@@ -109,24 +96,10 @@ async def _fetch_list(client, list_url: str, target: str, con_base: str, tags: d
         link_els = page_root.findall(f'.//{linkkey}')
         if not link_els:
             continue
-
-        if mode == 'insert':
-            day_els = page_root.findall('.//의결일자')
-            if not day_els:
-                return []
-            for i, link_el in enumerate(link_els):
-                day_el = day_els[i] if i < len(day_els) else None
-                day_str = (day_el.text or '').strip() if day_el is not None else ''
-                if not _is_target_date(day_str):
-                    return []
-                link = (link_el.text or '').strip()
-                if link:
-                    metas.append({'link': _adjust_link(link, con_base), 'target': target})
-        else:
-            for link_el in link_els:
-                link = (link_el.text or '').strip()
-                if link:
-                    metas.append({'link': _adjust_link(link, con_base), 'target': target})
+        for link_el in link_els:
+            link = (link_el.text or '').strip()
+            if link:
+                metas.append({'link': _adjust_link(link, con_base), 'target': target})
 
     return metas
 
@@ -151,7 +124,7 @@ def _parse_detail(root, target: str, tags: dict) -> list:
     return [instn_dcsnst_srno, dcsnst_srno, instn, cs_no, cs_nm, target, dcsn_ymd, ctxt, data_ymd]
 
 
-async def run(cfg: dict, ymd: str, logger: JobLogger, mode: str = 'all', test_urls: list = None, target: str = None):
+async def run(cfg: dict, ymd: str, logger: JobLogger, test_urls: list = None, target: str = None):
     csv_dir = Path(cfg['csv_path']) / ymd
     csv_dir.mkdir(parents=True, exist_ok=True)
 
@@ -159,7 +132,7 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, mode: str = 'all', test_ur
     con_base = _con_base(cfg['api_con_path'])
     start_time = time.time()
 
-    tag_map = {target: DCASE_TAG_MAP[target]} if (test_urls and target and target in DCASE_TAG_MAP) else DCASE_TAG_MAP
+    tag_map = {target: DCASE_TAG_MAP[target]} if (target and target in DCASE_TAG_MAP) else DCASE_TAG_MAP
 
     for target, tags in tag_map.items():
         list_url = _make_list_url(cfg['api_list_url'], target)
@@ -177,7 +150,7 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, mode: str = 'all', test_ur
                 logger.info(f'[de_case/{target}] 테스트 URL {total}건 지정')
             else:
                 async with make_async_client(verify_ssl=verify_ssl) as client:
-                    metas = await _fetch_list(client, list_url, target, con_base, tags, mode)
+                    metas = await _fetch_list(client, list_url, target, con_base, tags)
 
                 total = len(metas)
                 logger.info(f'[de_case/{target}] 대상: {total}건')

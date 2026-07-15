@@ -3,7 +3,7 @@ import csv
 import time
 from pathlib import Path
 
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_random_exponential, retry_if_exception_type
 from tqdm import tqdm
 
 from common.csv_writer import CsvWriter
@@ -281,7 +281,7 @@ async def run(cfg: dict, ymd: str, logger: JobLogger, test_urls: list = None):
 
         @retry(
             stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=1, min=2, max=10),
+            wait=wait_random_exponential(multiplier=1, min=2, max=15),
             retry=retry_if_exception_type(RETRYABLE),
             reraise=True,
         )

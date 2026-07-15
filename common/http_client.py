@@ -18,7 +18,8 @@ _HEADERS = {
 
 
 def make_async_client(verify_ssl: bool = True, timeout: int = 30) -> httpx.AsyncClient:
-    return httpx.AsyncClient(verify=verify_ssl, timeout=timeout, follow_redirects=True, headers=_HEADERS)
+    limits = httpx.Limits(max_connections=20, max_keepalive_connections=10)
+    return httpx.AsyncClient(verify=verify_ssl, timeout=timeout, follow_redirects=True, headers=_HEADERS, limits=limits)
 
 
 async def fetch_xml(client: httpx.AsyncClient, url: str) -> bytes:

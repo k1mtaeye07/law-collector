@@ -52,12 +52,14 @@ GLOB_PATTERNS = {
 }
 
 
-def setup_logger(log_dir: Path) -> logging.Logger:
+def setup_logger(log_dir: Path, task: str = '') -> logging.Logger:
     log_dir.mkdir(parents=True, exist_ok=True)
     dt = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = log_dir / f'load_{dt}.log'
+    prefix = f'{task}_' if task else ''
+    log_file = log_dir / f'load_{prefix}{dt}.log'
 
-    logger = logging.getLogger(f'load.{dt}')
+    logger_name = f'load.{task}.{dt}' if task else f'load.{dt}'
+    logger = logging.getLogger(logger_name)
     fmt = logging.Formatter('[%(asctime)s] %(levelname)s %(message)s', '%Y-%m-%d %H:%M:%S')
     fh = logging.FileHandler(log_file, encoding='utf-8')
     fh.setFormatter(fmt)
@@ -100,7 +102,7 @@ def run(table: str, cfg: dict, ymd: str, csv_dir_override: str = None, logger=No
 
     log_dir = Path(cfg['logs_path']) / ymd
     if logger is None:
-        logger = setup_logger(log_dir)
+        logger = setup_logger(log_dir, task=table)
 
     csv_dir = Path(csv_dir_override or cfg['csv_path']) / ymd
     glob_pat = GLOB_PATTERNS.get(table, f'{table}_????_*.csv')

@@ -11,6 +11,7 @@ env: dev | stg | law | prod
 """
 import argparse
 import asyncio
+import logging
 import sys
 import time
 from datetime import date
@@ -26,7 +27,7 @@ def cmd_law_list(args):
         cfg['concurrency'] = args.concurrency
 
     ymd = date.today().strftime('%Y%m%d')
-    logger = JobLogger(cfg['logs_path'], ymd)
+    logger = JobLogger(cfg['logs_path'], ymd, 'law_list')
 
     from crawl.law_list import run
     start = time.time()
@@ -40,7 +41,7 @@ def cmd_auth_int(args):
         cfg['concurrency'] = args.concurrency
 
     ymd = date.today().strftime('%Y%m%d')
-    logger = JobLogger(cfg['logs_path'], ymd)
+    logger = JobLogger(cfg['logs_path'], ymd, 'auth_int')
 
     from crawl.auth_int import run
     asyncio.run(run(cfg, ymd, logger,
@@ -54,10 +55,10 @@ def cmd_de_case(args):
         cfg['concurrency'] = args.concurrency
 
     ymd = date.today().strftime('%Y%m%d')
-    logger = JobLogger(cfg['logs_path'], ymd)
+    logger = JobLogger(cfg['logs_path'], ymd, 'de_case')
 
     from crawl.de_case import run
-    asyncio.run(run(cfg, ymd, logger, mode=args.mode,
+    asyncio.run(run(cfg, ymd, logger,
                     test_urls=getattr(args, 'test_urls', None),
                     target=getattr(args, 'target', None)))
 
@@ -66,20 +67,18 @@ def cmd_load(args):
     cfg = load_config(args.env)
     ymd = date.today().strftime('%Y%m%d')
 
-    from pathlib import Path
-    from load_csv import run, COPY_HEADERS, setup_logger
-    logger = setup_logger(Path(cfg['logs_path']) / ymd)
+    from load_csv import run, COPY_HEADERS
 
     for table in COPY_HEADERS.keys():
         try:
-            run(table, cfg, ymd, logger=logger)
+            run(table, cfg, ymd)
         except FileNotFoundError as e:
-            logger.warning(f'[load] {table} CSV 없음, 건너뜀: {e}')
+            logging.warning(f'[load] {table} CSV 없음, 건너뜀: {e}')
 
 
 def cmd_all(args):
     from pathlib import Path
-    from load_csv import run as load_run, setup_logger
+    from load_csv import run as load_run
     import crawl.law_list as m_law_list
     import crawl.law_content as m_law_content
     import crawl.auth_int as m_auth_int
@@ -90,28 +89,26 @@ def cmd_all(args):
         cfg['concurrency'] = args.concurrency
 
     ymd = date.today().strftime('%Y%m%d')
-    logger = JobLogger(cfg['logs_path'], ymd)
-    load_logger = setup_logger(Path(cfg['logs_path']) / ymd)
 
     def _load(*tables):
         for table in tables:
             try:
-                load_run(table, cfg, ymd, logger=load_logger)
+                load_run(table, cfg, ymd)
             except FileNotFoundError as e:
-                load_logger.warning(f'[load] {table} CSV 없음, 건너뜀: {e}')
+                logging.warning(f'[load] {table} CSV 없음, 건너뜀: {e}')
             except Exception as e:
-                load_logger.error(f'[load] {table} 적재 실패: {e}')
+                logging.error(f'[load] {table} 적재 실패: {e}')
 
-    m_law_list.run(cfg, ymd, logger)
+    m_law_list.run(cfg, ymd, JobLogger(cfg['logs_path'], ymd, 'law_list'))
     _load('law_list')
 
-    asyncio.run(m_law_content.run(cfg, ymd, logger))
+    asyncio.run(m_law_content.run(cfg, ymd, JobLogger(cfg['logs_path'], ymd, 'law_content')))
     _load('law_con', 'law_jo_con', 'law_hang_con')
 
-    asyncio.run(m_auth_int.run(cfg, ymd, logger))
+    asyncio.run(m_auth_int.run(cfg, ymd, JobLogger(cfg['logs_path'], ymd, 'auth_int')))
     _load('auth_int')
 
-    asyncio.run(m_de_case.run(cfg, ymd, logger))
+    asyncio.run(m_de_case.run(cfg, ymd, JobLogger(cfg['logs_path'], ymd, 'de_case')))
     _load('de_case')
 
 
@@ -121,7 +118,7 @@ def cmd_law_content(args):
         cfg['concurrency'] = args.concurrency
 
     ymd = date.today().strftime('%Y%m%d')
-    logger = JobLogger(cfg['logs_path'], ymd)
+    logger = JobLogger(cfg['logs_path'], ymd, 'law_content')
 
     from crawl.law_content import run
     asyncio.run(run(
@@ -151,8 +148,7 @@ def main():
                            help='테스트 시 사용할 target 코드 (기본: moelCgmExpc)')
 
     p_decase = sub.add_parser('de_case', parents=[common], help='결정례 수집 (de_case_*)')
-    p_decase.add_argument('--mode', choices=['all', 'insert'], default='all',
-                          help='all: 전체 수집 | insert: 전일/당일 신규 수집 (기본: all)')
+
     p_decase.add_argument('--test-urls', nargs='+', metavar='URL', dest='test_urls',
                           help='특정 URL 지정 수집 (테스트용)')
     p_decase.add_argument('--target', metavar='TARGET', dest='target',
